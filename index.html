@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Notes</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="script.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="logo">
+            <img src="CampusNotes (2).png" alt="Campus Notes Logo" class="logo-img">
+        </div>
+        <ul>
+            <li><a href="#home">Home</a></li>
+            <li id="aboutLink"><a href="#about">About Us</a></li>
+            <li id="contactLink"><a href="#contact">Contact Us</a></li>
+            <li><a href="#login" onclick="showLogin()" id="loginLink">Login</a></li>
+            <li id="userInfo" class="hidden"></li>
+        </ul>
+    </nav>
+
+    <!-- Home Section -->
+    <section id="home" class="section welcome">
+        <h1>Welcome to Campus Notes</h1>
+        <p>Your hub for all college notes, shared by students for students.</p>
+        <div id="departments" class="departments hidden">
+            <h2>Select Your Department</h2>
+            <div class="dept-grid">
+                <button onclick="showSubjects('ECE')">ECE</button>
+                <button onclick="showSubjects('ENTC')">ENTC</button>
+                <button onclick="showSubjects('IT')">IT</button>
+                <button onclick="showSubjects('AIDS')">AIDS</button>
+                <button onclick="showSubjects('CE')">CE</button>
+            </div>
+        </div>
+        <div id="subjects" class="subjects hidden">
+            <h3 id="subjectTitle"></h3>
+            <div class="subject-grid" id="subjectGrid"></div>
+            <div id="uploadSection" class="upload-section hidden">
+                <h4>Upload Notes (<span id="currentSubject"></span>)</h4>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <input type="file" id="noteFile" name="noteFile" accept=".pdf,.doc,.docx,.xls,.xlsx" required>
+                    <button type="submit">Upload</button>
+                </form>
+                <div id="fileList"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Us Section -->
+    <section id="about" class="section">
+        <h2>About Us</h2>
+        <p>Campus Notes is a collaborative platform where students can upload and access academic notes. Designed to support learning and collaboration, our aim is to simplify academic resources access.</p>
+    </section>
+
+    <!-- Contact Us Section -->
+    <section id="contact" class="section">
+        <h2>Contact Us</h2>
+        <p>Email: support@campusnotes.edu.in</p>
+        <p>Phone: +91-9876543210</p>
+    </section>
+
+    <!-- Login Form Section -->
+    <section id="login" class="section hidden login-section">
+        <form id="loginForm" class="login-form">
+            <h2>Login to Campus Notes</h2>
+            <input type="text" id="name" placeholder="Name" required>
+            <input type="text" id="branch" placeholder="Branch/" required>
+            <input type="text" id="rollNo" placeholder="Roll No" required>
+            <button type="submit">Login</button>
+        </form>
+    </section>
+
+    <script>
+    function showLogin() {
+        document.getElementById("login").classList.remove("hidden");
+        document.getElementById("login").scrollIntoView({ behavior: 'smooth' });
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+        const name = document.getElementById("name").value;
+        const branch = document.getElementById("branch").value;
+        const rollNo = document.getElementById("rollNo").value;
+
+        if (name && branch && rollNo) {
+            document.getElementById("login").classList.add("hidden");
+            document.getElementById("loginLink").classList.add("hidden");
+            document.getElementById("aboutLink").classList.add("hidden");
+            document.getElementById("contactLink").classList.add("hidden");
+            document.getElementById("userInfo").textContent = name + " (" + rollNo + ")";
+            document.getElementById("userInfo").classList.remove("hidden");
+            document.getElementById("departments").classList.remove("hidden");
+            document.getElementById("home").scrollIntoView({ behavior: 'smooth' });
+        } else {
+            alert("Please fill in all fields.");
+        }
+    });
+
+    function showSubjects(department) {
+        const subjects = {
+            "ECE": ["Digital Electronics", "Analog Circuits", "Control Systems"],
+            "ENTC": ["Microcontrollers", "Signal Processing", "Communication"],
+            "IT": ["Web Development", "Database Systems", "Operating Systems"],
+            "AIDS": ["Machine Learning", "Data Science", "AI"],
+            "CE": ["Structural Analysis", "Surveying", "Hydraulics"]
+        };
+
+        const grid = document.getElementById("subjectGrid");
+        grid.innerHTML = "";
+        subjects[department].forEach(subject => {
+            const div = document.createElement("div");
+            div.textContent = subject;
+            div.classList.add("subject-box");
+            div.onclick = () => showUploadSection(subject);
+            grid.appendChild(div);
+        });
+
+        document.getElementById("subjectTitle").textContent = department + " Subjects";
+        document.getElementById("subjects").classList.remove("hidden");
+        document.getElementById("subjects").scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showUploadSection(subject) {
+        document.getElementById("uploadSection").classList.remove("hidden");
+        document.getElementById("uploadForm").dataset.subject = subject;
+        document.getElementById("currentSubject").textContent = subject;
+        loadFiles(subject);
+    }
+
+    document.getElementById("uploadForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+        const formData = new FormData();
+        const subject = event.target.dataset.subject;
+        const fileInput = document.getElementById("noteFile");
+        formData.append("noteFile", fileInput.files[0]);
+        formData.append("subject", subject);
+
+        fetch("/upload", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            fileInput.value = "";
+            loadFiles(subject);
+        })
+        .catch(error => console.error("Upload error:", error));
+    });
+
+    function loadFiles(subject) {
+        fetch(`/files?subject=${encodeURIComponent(subject)}`)
+        .then(res => res.json())
+        .then(files => {
+            const list = document.getElementById("fileList");
+            list.innerHTML = "<h4>Uploaded Notes</h4>";
+            files.forEach(file => {
+                const a = document.createElement("a");
+                a.href = file.url;
+                a.textContent = file.name;
+                a.target = "_blank";
+                list.appendChild(a);
+                list.appendChild(document.createElement("br"));
+            });
+        });
+    }
+    </script>
+</body>
+</html>
